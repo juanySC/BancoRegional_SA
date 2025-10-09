@@ -6,10 +6,10 @@ package org.example.cliente;
 public class Cliente {
     //atributos
     private final String identificacion;
-    private String nombre;
+    private String nombreCompleto;
 
     //constructor
-    public Cliente(String identificacion, String nombre){
+    public Cliente(String identificacion, String nombreCompleto){
 
         //pongo una condicion para que la identificacion no venga vacia
         //1.- Trim: Crea una nueva cadena de texto a partir de la original, pero eliminando
@@ -20,13 +20,12 @@ public class Cliente {
             throw  new IllegalArgumentException("La identificacion del cliente no puede estar vacio");
         }
 
-        this.identificacion = identificacion.trim();
-
-        if (nombre == null || nombre.trim().isEmpty()){
+        if (nombreCompleto == null || nombreCompleto.trim().isEmpty()){
             throw  new IllegalArgumentException("El nombre del cliente no puede estar vacío");
         }
 
-        this.nombre = nombre.trim();
+        this.identificacion = identificacion.trim();
+        this.nombreCompleto = nombreCompleto.trim();
     }
 
     //metodos
@@ -41,12 +40,18 @@ public class Cliente {
 
     //no obtengo el set de identificacion porque no quiero que se modifique
 
-    public String getNombre() {
-        return nombre;
+    public String getNombreCompleto() {
+        return nombreCompleto;
     }
 
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
+    //por si se desea cambiar el nombre
+    public void setNombreCompleto(String nuevoNombre) {
+        if(nuevoNombre != null && !nuevoNombre.trim().isEmpty() ){
+            //se le asigna el nuevo valor
+            this.nombreCompleto = nuevoNombre.trim();
+        } else {
+            throw new IllegalArgumentException("Error: El nombre no ha sido modificado");
+        }
     }
 
     //mostrando toda la informacion
@@ -55,7 +60,7 @@ public class Cliente {
     public String toString() {
         return "Cliente{" +
                 "identificacion='" + identificacion + '\'' +
-                ", nombre='" + nombre + '\'' +
+                ", nombre='" + nombreCompleto + '\'' +
                 '}';
     }
 }
