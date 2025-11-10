@@ -1,0 +1,178 @@
+package Utilitaria;
+
+import java.util.Scanner;
+
+import Enums.TipoTransaccion;
+import Enums.TipoCuenta;
+public class ScannerUtil
+{
+    
+    private static Scanner scanner = new Scanner(System.in);
+    /**
+     * este metodo nos ayuda a capturar un String del usuario
+     * @param mensajeParaElUsuario es lo que se le muestra al usuario
+     * @return nos devuelve el String capturado
+     */
+    public static String capturarTexto(String mensajeParaElUsuario)
+    {
+       System.out.println(mensajeParaElUsuario);
+       return scanner.nextLine(); 
+    }
+
+     /**
+      * Captura texto y devuelve null si el usuario ingresa la palabra especial "salir".
+      */
+     public static String capturarTextoCancelable(String mensajeParaElUsuario)
+     {
+        // evitar duplicar la sugerencia si el prompt ya la contiene
+        String lower = mensajeParaElUsuario == null ? "" : mensajeParaElUsuario.toLowerCase();
+        if (lower.contains("salir")) {
+            System.out.println(mensajeParaElUsuario);
+        } else {
+            System.out.println(mensajeParaElUsuario + " (o escriba 'salir' para cancelar)");
+        }
+         String s = scanner.nextLine();
+         if (s == null) return null;
+         if (s.trim().equalsIgnoreCase("salir")) return null;
+         return s;
+     }
+    /**
+     * este metodo captura un entero ingresado por el usuario
+     * @param mensajeParaElUsuario es lo que se le muestra al usuario
+     * @return nos devuelve el entero capturado
+     */
+    public static int capturarEntero(String mensajeParaElUsuario)
+    {
+            System.out.print(mensajeParaElUsuario);
+            while (!scanner.hasNextInt()) 
+            {
+            System.out.println("Entrada inválida. Por favor, ingrese un número entero.");
+            scanner.next(); 
+            }
+        int numero = scanner.nextInt();
+        scanner.nextLine(); 
+        return numero;
+    }
+    /**
+     * este metodo nos ayuda a capturar un numero double ingresado por el usuario
+     * @param mensajeParaElUsuario es lo que se le muestra al usuario
+     * @return nos devuelve el double capturado
+     */
+    public static double capturarDouble(String mensajeParaElUsuario)
+    {
+          System.out.print(mensajeParaElUsuario);
+            // leer como texto y normalizar separador decimal para evitar bloqueos del scanner
+            while (true) {
+                String s = scanner.nextLine();
+                if (s == null) throw new RuntimeException("Entrada cancelada");
+                s = s.trim().replace(',', '.');
+                try {
+                    double numero = Double.parseDouble(s);
+                    return numero;
+                } catch (NumberFormatException ex) {
+                    System.out.println("Entrada inválida. Por favor, ingrese un número (use . o , como separador decimal).");
+                }
+            }
+    }
+
+    /**
+     * Captura un double con posibilidad de cancelar escribiendo 'salir'.
+     * Devuelve null si se cancela.
+     */
+    public static Double capturarDoubleCancelable(String mensajeParaElUsuario)
+    {
+        // evitar duplicar la sugerencia si el prompt ya contiene 'salir'
+        String lower = mensajeParaElUsuario == null ? "" : mensajeParaElUsuario.toLowerCase();
+        if (lower.contains("salir")) {
+            System.out.print(mensajeParaElUsuario + ": ");
+        } else {
+            System.out.print(mensajeParaElUsuario + " (o escriba 'salir' para cancelar): ");
+        }
+        while (true) {
+            String s = scanner.nextLine();
+            if (s == null) return null;
+            if (s.trim().equalsIgnoreCase("salir")) return null;
+            s = s.trim().replace(',', '.');
+            try {
+                return Double.parseDouble(s);
+            } catch (NumberFormatException ex) {
+                System.out.println("Entrada inválida. Por favor, ingrese un número (use . o , como separador decimal) o 'salir' para cancelar.");
+            }
+        }
+    }
+    /**
+     * Este metodo nos ayuda a capturar un TipoTransaccion que ingrese el usuario.
+     * Nos auxiliamos del enum TipoTransaccion.
+     * Si se ingresa algo que no esta dentro de ese enum, se le vuelve a pedir al usuario que ingrese una opcion valida.
+     * @return el TipoTransaccion que el usuario, ingreso y que este en enum TipoTransaccion
+     * @param mensaje es lo que se le muestra al usuario
+     */
+     public static TipoTransaccion capturarTipoTransaccion(String mensaje)
+    {
+        while (true)
+        {
+            System.out.println(mensaje + "... Opciones:");
+            for (TipoTransaccion tipoTransaccion : TipoTransaccion.values())
+            {
+                System.out.println("- " + tipoTransaccion.name());
+            }
+
+            String entrada = capturarTexto("¿Cuál quieres?");
+            entrada = entrada.trim();
+
+            
+            if (entrada.contains(" "))
+            {
+                System.out.println("No se permiten espacios entre letras. Intenta nuevamente.");
+                continue;
+            }
+
+            try
+            {
+                return TipoTransaccion.valueOf(entrada.toUpperCase());
+            }
+            catch (IllegalArgumentException e)
+            {
+                System.out.println("Tipo de transacción no encontrada: " + entrada + ". Intenta de nuevo.");
+            }
+        }
+    }
+
+    /**
+     * Este metodo nos ayuda a capturar un TipoCuenta que ingrese el usuario.
+     * Nos auxiliamos del enum TipoCuenta.
+     * Si se ingresa algo que no esta dentro de ese enum, se le vuelve a pedir al usuario que ingrese una opcion valida.
+     * @return el TipoCuenta que el usuario ingreso, y que este en enum TipoCuenta
+     * @param mensaje es lo que se le muestra al usuario
+     */
+    public static TipoCuenta capturarTipoCuenta(String mensaje)
+    {
+        while (true)
+        {
+            System.out.println(mensaje + "... Opciones:");
+            for (TipoCuenta tipoCuenta : TipoCuenta.values())
+            {
+                System.out.println("- " + tipoCuenta.name());
+            }
+
+            String entrada = capturarTexto("¿Cuál quieres?");
+            entrada = entrada.trim();
+
+            
+            if (entrada.contains(" "))
+            {
+                System.out.println("No se permiten espacios entre letras. Intenta nuevamente.");
+                continue;
+            }
+
+            try
+            {
+                return TipoCuenta.valueOf(entrada.toUpperCase());
+            }
+            catch (IllegalArgumentException e)
+            {
+                System.out.println("Tipo de cuenta no encontrada: " + entrada + ". Intenta de nuevo.");
+            }
+        }
+    }
+}
