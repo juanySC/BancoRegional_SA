@@ -1,0 +1,436 @@
+================================================================================
+EJERCICIO 1 – SEGURIDAD DE ACCESO: BLOQUEO DE CUENTA
+================================================================================
+
+DESCRIPCIÓN:
+Se implementó un mecanismo robusto de bloqueo de cuenta por intentos fallidos 
+de autenticación. Esto proporciona seguridad adicional al sistema bancario.
+
+================================================================================
+CARACTERÍSTICAS IMPLEMENTADAS:
+================================================================================
+
+✓ Atributo intentosFallidos: Contador de intentos fallidos (inicia en 0)
+✓ Atributo bloqueada: Estado de bloqueo de la cuenta (boolean)
+✓ Constante MAX_INTENTOS_FALLIDOS: Límite máximo establecido en 3
+✓ Métodos de seguridad en Cuenta.java
+✓ Lógica de bloqueo en ATM.java
+✓ Excepción personalizada CuentaBloqueadaExcepcion.java
+✓ Métodos administrativos para desbloquear cuentas
+
+================================================================================
+1. MODIFICACIONES EN CUENTA.JAVA
+================================================================================
+
+1.1 CONSTANTE STATIC FINAL
+    public static final int MAX_INTENTOS_FALLIDOS = 3;
+    
+    - Definida a nivel de clase
+    - No puede ser modificada en tiempo de ejecución
+    - Utilizable en todo el proyecto mediante Cuenta.MAX_INTENTOS_FALLIDOS
+
+1.2 NUEVOS ATRIBUTOS
+    private int intentosFallidos;    // Contador de intentos fallidos
+    private boolean bloqueada;        // Estado de bloqueo
+
+1.3 INICIALIZACIÓN EN CONSTRUCTOR
+    En el constructor:
+    - this.intentosFallidos = 0;     // Inicia en 0
+    - this.bloqueada = false;         // Inicia desbloqueada
+
+1.4 NUEVOS MÉTODOS DE SEGURIDAD
+
+    public boolean estaBloqueada()
+    - Verifica si la cuenta está bloqueada
+    - Retorna: true si está bloqueada, false en caso contrario
+    - Encapsulamiento: Acceso controlado al atributo privado
+
+    public int getIntentosFallidos()
+    - Obtiene el número de intentos fallidos
+    - Retorna: número entero con los intentos registrados
+    - Uso: Para mostrar información al usuario
+
+    public void incrementarIntentosFallidos()
+    - Incrementa el contador de intentos fallidos en 1
+    - Lógica:
+      1. intentosFallidos++
+      2. Si intentosFallidos >= MAX_INTENTOS_FALLIDOS, bloqueada = true
+    - Se llama cuando el usuario ingresa un PIN incorrecto
+
+    public void reiniciarIntentosFallidos()
+    - Reinicia el contador a 0
+    - Se llama cuando el usuario ingresa el PIN correcto
+    - Borra el historial de intentos fallidos
+
+    public void desbloquearCuenta()
+    - Desbloquea la cuenta (función administrativa)
+    - Reinicia intentosFallidos = 0
+    - Establece bloqueada = false
+
+    public boolean isBloqueada()
+    - Alias para estaBloqueada()
+    - Permite diferentes estilos de código
+
+    public void setBloqueada(boolean bloqueada)
+    - Establece el estado de bloqueo directamente
+    - Utilizado por métodos administrativos
+
+================================================================================
+2. NUEVA EXCEPCIÓN: CUENTABLOQUEADAEXCEPCION.JAVA
+================================================================================
+
+Ubicación: Excepciones/CuentaBloqueadaExcepcion.java
+
+Propósito:
+- Proporcionar un tipo de excepción específico para bloqueo de cuenta
+- Permite diferenciar entre "PIN inválido" y "Cuenta bloqueada"
+- Facilita el manejo granular de errores en la aplicación
+- Mejora la legibilidad del código
+
+Herencia:
+- Extiende RuntimeException
+- Excepciones no verificadas (no requieren declare en firmas)
+- Consistente con el diseño del proyecto
+
+Constructores:
+- CuentaBloqueadaExcepcion(String mensaje)
+- CuentaBloqueadaExcepcion(String mensaje, Throwable causa)
+
+================================================================================
+3. MODIFICACIONES EN ATM.JAVA
+================================================================================
+
+3.1 IMPORT AGREGADO
+    import Excepciones.CuentaBloqueadaExcepcion;
+
+3.2 MÉTODO MEJORADO: validarPinParaOperacion()
+
+    CAMBIOS RESPECTO A VERSIÓN ANTERIOR:
+    - Ahora verifica si la cuenta está bloqueada ANTES de validar PIN
+    - Si está bloqueada, lanza CuentaBloqueadaExcepcion inmediatamente
+    - Si el PIN es incorrecto, incrementa intentosFallidos
+    - Si se alcanza MAX_INTENTOS_FALLIDOS, bloquea la cuenta automáticamente
+    - Si el PIN es correcto, reinicia intentosFallidos a 0
+
+    FLUJO DE LÓGICA PASO A PASO:
+    1. Obtener la cuenta del mapa (this.cuentas.get(numeroCuenta))
+    2. ¿Existe la cuenta?
+       → NO: Lanzar CuentaNoEncontradaExcepcion
+    3. ¿Está bloqueada? (cuentaPorValidar.estaBloqueada())
+       → SÍ: Lanzar CuentaBloqueadaExcepcion
+    4. ¿PIN correcto? (cuentaPorValidar.getPin().equals(pin))
+       → NO: 
+          a. Incrementar intentosFallidos (incrementarIntentosFallidos())
+          b. ¿Se alcanzó el máximo?
+             → SÍ: Lanzar CuentaBloqueadaExcepcion (cuenta bloqueada)
+             → NO: Lanzar PinInvalidoExcepcion con intentos restantes
+       → SÍ: Reiniciar intentosFallidos y permitir operación
+
+    CÓDIGO RESULTADO:
+    
+    private void validarPinParaOperacion(String numeroCuenta, String pin) {
+        Cuenta cuentaPorValidar = this.cuentas.get(numeroCuenta);
+        if (cuentaPorValidar == null)
+            throw new CuentaNoEncontradaExcepcion(numeroCuenta);
+
+        // SEGURIDAD: Verificar si la cuenta está bloqueada
+        if (cuentaPorValidar.estaBloqueada()) {
+            throw new CuentaBloqueadaExcepcion(
+                "La cuenta " + numeroCuenta + 
+                " está bloqueada por múltiples intentos fallidos. " +
+                "Contacte a administración."
+            );
+        }
+
+        // Validar el PIN
+        if (!cuentaPorValidar.getPin().equals(pin)) {
+            // PIN incorrecto: incrementar intentos
+            cuentaPorValidar.incrementarIntentosFallidos();
+            
+            // Verificar si se alcanzó el límite
+            if (cuentaPorValidar.estaBloqueada()) {
+                throw new CuentaBloqueadaExcepcion(
+                    "PIN inválido. Se alcanzó el máximo de intentos (" + 
+                    Cuenta.MAX_INTENTOS_FALLIDOS + 
+                    "). La cuenta ha sido bloqueada."
+                );
+            } else {
+                // Informar intentos restantes
+                int intentosRestantes = Cuenta.MAX_INTENTOS_FALLIDOS - 
+                                       cuentaPorValidar.getIntentosFallidos();
+                throw new PinInvalidoExcepcion(
+                    "PIN inválido. Intentos restantes: " + intentosRestantes
+                );
+            }
+        }
+
+        // PIN correcto: reiniciar intentos fallidos
+        cuentaPorValidar.reiniciarIntentosFallidos();
+    }
+
+3.3 MÉTODO MEJORADO: verificarPinSinBloqueo()
+
+    CAMBIOS:
+    - Ahora también verifica si la cuenta está bloqueada
+    - Retorna false si está bloqueada (aunque el PIN sea correcto)
+    
+    PROPÓSITO:
+    - Usada en consultas de saldo donde el usuario puede reintentar
+    - Evita que usuarios con cuentas bloqueadas accedan a operaciones
+    - Más segura que la versión anterior
+
+    CÓDIGO RESULTADO:
+    
+    public boolean verificarPinSinBloqueo(String numeroCuenta, String pin) {
+        Cuenta cuentaPorValidar = this.cuentas.get(numeroCuenta);
+        if (cuentaPorValidar == null) return false;
+        if (cuentaPorValidar.estaBloqueada()) return false; // Rechazar si bloqueada
+        return cuentaPorValidar.getPin().equals(pin);
+    }
+
+3.4 NUEVOS MÉTODOS ADMINISTRATIVOS
+
+    public boolean desbloquearCuenta(String numeroCuenta)
+    - Desbloquea una cuenta (función administrativa)
+    - Reinicia intentosFallidos a 0
+    - Establece bloqueada = false
+    - Retorna true si se desbloqueó, false si no existe
+    
+    Código:
+    public boolean desbloquearCuenta(String numeroCuenta) {
+        Cuenta cuenta = this.cuentas.get(numeroCuenta);
+        if (cuenta == null) return false;
+        cuenta.desbloquearCuenta();
+        return true;
+    }
+
+    public boolean estaCuentaBloqueada(String numeroCuenta)
+    - Consultar el estado de bloqueo de una cuenta
+    - Útil para reportes y auditoría
+    - Retorna true si está bloqueada
+    
+    Código:
+    public boolean estaCuentaBloqueada(String numeroCuenta) {
+        Cuenta cuenta = this.cuentas.get(numeroCuenta);
+        if (cuenta == null) return false;
+        return cuenta.estaBloqueada();
+    }
+
+    public int obtenerIntentosFallidos(String numeroCuenta)
+    - Obtener número de intentos fallidos de una cuenta
+    - Útil para auditoría y diagnóstico
+    - Retorna -1 si la cuenta no existe
+    
+    Código:
+    public int obtenerIntentosFallidos(String numeroCuenta) {
+        Cuenta cuenta = this.cuentas.get(numeroCuenta);
+        if (cuenta == null) return -1;
+        return cuenta.getIntentosFallidos();
+    }
+
+================================================================================
+FLUJO DE EJEMPLO 1: INTENTOS FALLIDOS
+================================================================================
+
+Escenario: Usuario intenta acceder a cuenta 000000000001 con PIN incorrecto
+PIN correcto es "1234", pero usuario ingresa valores incorrectos
+
+INTENTO 1: Usuario ingresa "1111"
+├─ validarPinParaOperacion("000000000001", "1111") es llamado
+├─ estaBloqueada() → false (cuenta no está bloqueada)
+├─ PIN validado → incorrecto (1111 ≠ 1234)
+├─ incrementarIntentosFallidos()
+│  └─ intentosFallidos = 0 + 1 = 1
+├─ estaBloqueada() → false (1 < 3)
+├─ Se lanza PinInvalidoExcepcion
+└─ Mensaje al usuario: "PIN inválido. Intentos restantes: 2"
+
+Estado de la cuenta: intentosFallidos=1, bloqueada=false
+
+INTENTO 2: Usuario ingresa "5555"
+├─ validarPinParaOperacion("000000000001", "5555") es llamado
+├─ estaBloqueada() → false
+├─ PIN validado → incorrecto (5555 ≠ 1234)
+├─ incrementarIntentosFallidos()
+│  └─ intentosFallidos = 1 + 1 = 2
+├─ estaBloqueada() → false (2 < 3)
+├─ Se lanza PinInvalidoExcepcion
+└─ Mensaje al usuario: "PIN inválido. Intentos restantes: 1"
+
+Estado de la cuenta: intentosFallidos=2, bloqueada=false
+
+INTENTO 3: Usuario ingresa "9999"
+├─ validarPinParaOperacion("000000000001", "9999") es llamado
+├─ estaBloqueada() → false
+├─ PIN validado → incorrecto (9999 ≠ 1234)
+├─ incrementarIntentosFallidos()
+│  └─ intentosFallidos = 2 + 1 = 3
+├─ estaBloqueada() → true (3 >= 3) ← CUENTA BLOQUEADA AUTOMÁTICAMENTE
+├─ Se lanza CuentaBloqueadaExcepcion
+└─ Mensaje al usuario: "PIN inválido. Se alcanzó el máximo de intentos (3).
+   La cuenta ha sido bloqueada. Contacte a administración."
+
+Estado de la cuenta: intentosFallidos=3, bloqueada=true
+
+INTENTO POSTERIOR (después del bloqueo):
+├─ Usuario intenta acceder nuevamente
+├─ validarPinParaOperacion("000000000001", "XXXX") es llamado
+├─ estaBloqueada() → true ← VERIFICACIÓN INMEDIATA
+├─ Se lanza CuentaBloqueadaExcepcion
+├─ No incrementa intentosFallidos (ya está bloqueada)
+└─ Mensaje: "La cuenta 000000000001 está bloqueada por múltiples intentos
+   fallidos. Contacte a administración."
+
+Estado de la cuenta: intentosFallidos=3, bloqueada=true (sin cambios)
+
+================================================================================
+FLUJO DE EJEMPLO 2: AUTENTICACIÓN EXITOSA
+================================================================================
+
+Escenario: Después de 2 intentos fallidos, usuario ingresa PIN correcto
+
+Estado antes: intentosFallidos=2, bloqueada=false
+
+INTENTO 3 (con PIN correcto): Usuario ingresa "1234"
+├─ validarPinParaOperacion("000000000001", "1234") es llamado
+├─ estaBloqueada() → false (aún tiene oportunidad)
+├─ PIN validado → correcto (1234 = 1234) ✓
+├─ reiniciarIntentosFallidos()
+│  └─ intentosFallidos = 0 ← REINICIO
+├─ Operación permitida
+└─ Mensaje: "Saldo: 5000.00" (o la operación solicitada)
+
+Estado después: intentosFallidos=0, bloqueada=false
+El usuario puede volver a intentar operaciones sin restricción
+
+================================================================================
+FLUJO DE EJEMPLO 3: DESBLOQUEO ADMINISTRATIVO
+================================================================================
+
+Escenario: Administrador desbloquea una cuenta bloqueada
+
+Estado antes: intentosFallidos=3, bloqueada=true
+
+DESBLOQUEO:
+├─ Administrador llama: atm.desbloquearCuenta("000000000001")
+├─ Se obtiene la cuenta
+├─ Se llama cuenta.desbloquearCuenta()
+│  ├─ bloqueada = false
+│  └─ intentosFallidos = 0
+├─ Retorna true (éxito)
+└─ Mensaje: "Cuenta 000000000001 desbloqueada exitosamente"
+
+Estado después: intentosFallidos=0, bloqueada=false
+El usuario puede intentar acceso nuevamente
+
+================================================================================
+TEMAS EVALUADOS EN ESTE EJERCICIO
+================================================================================
+
+1. ENCAPSULAMIENTO:
+   ✓ Atributos privados (intentosFallidos, bloqueada)
+   ✓ Getters públicos para lectura (getIntentosFallidos, estaBloqueada)
+   ✓ Setters controlados (setBloqueada con validación)
+   ✓ Métodos privados para lógica interna (validarPin)
+   ✓ Acceso controlado mediante métodos públicos
+   ✓ No exposición directa de atributos
+
+2. CONSTANTES STATIC FINAL:
+   ✓ public static final int MAX_INTENTOS_FALLIDOS = 3;
+   ✓ Definida a nivel de clase
+   ✓ No puede ser modificada una vez compilada
+   ✓ Reutilizable en todo el proyecto
+   ✓ Fácil mantenimiento (cambiar en un solo lugar)
+   ✓ Refleja política de seguridad de la empresa
+
+3. MANEJO DE ESTADO DE OBJETOS:
+   ✓ Estados bien definidos:
+     - Desbloqueada con intentosFallidos = 0
+     - Activa con 1-2 intentosFallidos
+     - Bloqueada con intentosFallidos >= 3
+   ✓ Transiciones lógicas entre estados
+   ✓ Métodos que modifican estado de forma consistente
+   ✓ No hay estados inconsistentes posibles
+   ✓ Validaciones previenen estados inválidos
+
+4. VALIDACIÓN DE ENTRADAS:
+   ✓ Verificación de existencia de cuenta
+   ✓ Verificación de estado de bloqueo
+   ✓ Validación de PIN contra el almacenado
+   ✓ Manejo de casos nulos (cuentas no encontradas)
+   ✓ Validación antes de permitir operaciones
+   ✓ Mensajes descriptivos de error
+
+5. MANEJO DE EXCEPCIONES:
+   ✓ Excepción personalizada CuentaBloqueadaExcepcion
+   ✓ Uso de excepción existente PinInvalidoExcepcion
+   ✓ Uso de excepción existente CuentaNoEncontradaExcepcion
+   ✓ Try-catch apropiado en Principal.java
+   ✓ Propagación adecuada de excepciones
+   ✓ Diferenciación clara entre tipos de error
+
+================================================================================
+MEJORAS Y EXTENSIONES FUTURAS
+================================================================================
+
+1. PERSISTENCIA DE ESTADO BLOQUEADO:
+   - Guardar estado bloqueado en ControlCuentas.txt
+   - Cargar estado al reiniciar aplicación
+   - Mantener estado entre sesiones
+
+2. SISTEMA DE DESBLOQUEO AUTOMÁTICO:
+   - Desbloquear después de X minutos
+   - Desbloquear a medianoche
+   - Desbloqueo temporal vs permanente
+
+3. AUDITORÍA MEJORADA:
+   - Registrar intentos fallidos en archivo
+   - Registrar quién desbloqueó la cuenta (administrador)
+   - Timestamp de cada intento fallido
+   - IP o terminal de origen (si aplicable)
+
+4. NOTIFICACIONES:
+   - SMS al cliente tras 2 intentos
+   - Email al cliente tras bloqueo
+   - Notificación al administrador tras bloqueo
+   - Confirmación de desbloqueo
+
+5. SEGURIDAD ADICIONAL:
+   - CAPTCHA tras 1 intento fallido
+   - Preguntas de seguridad tras 2 intentos
+   - Verificación 2FA tras bloqueo
+   - Rate limiting por IP
+
+6. ANÁLISIS DE SEGURIDAD:
+   - Reportes de intentos fallidos por día
+   - Identificar patrones de ataque
+   - Alertas automáticas
+   - Dashboard de seguridad
+
+================================================================================
+ARCHIVO GENERADO:
+================================================================================
+
+✓ Excepciones/CuentaBloqueadaExcepcion.java - Nueva excepción personalizada
+
+ARCHIVOS MODIFICADOS:
+================================================================================
+
+✓ Modelos/Cuenta.java
+  - Agregar constante MAX_INTENTOS_FALLIDOS
+  - Agregar atributos intentosFallidos y bloqueada
+  - Inicializar en constructor
+  - Agregar 6 nuevos métodos de seguridad
+
+✓ Servicios/ATM.java
+  - Agregar import de CuentaBloqueadaExcepcion
+  - Mejorar validarPinParaOperacion()
+  - Mejorar verificarPinSinBloqueo()
+  - Agregar desbloquearCuenta()
+  - Agregar estaCuentaBloqueada()
+  - Agregar obtenerIntentosFallidos()
+
+El Principal.java ya maneja correctamente las excepciones, por lo que
+el sistema funcionará sin cambios adicionales.
+
+================================================================================

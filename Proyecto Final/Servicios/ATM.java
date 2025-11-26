@@ -7,6 +7,7 @@ import Modelos.Transaccion;
 import Modelos.Cuenta;
 import Excepciones.CuentaNoEncontradaExcepcion;
 import Excepciones.PinInvalidoExcepcion;
+import Excepciones.CuentaBloqueadaExcepcion;
 
 
 public class ATM 
@@ -36,8 +37,9 @@ public class ATM
    
 
     /**
-     * Valida PIN para operaciones puntuales 
-     * Si el PIN es incorrecto lanza PinInvalidoExcepcion; no hay conteo ni bloqueo.
+     * Valida PIN para operaciones puntuales con mecanismo de bloqueo por intentos fallidos.
+     * Si la cuenta está bloqueada, lanza CuentaBloqueadaExcepcion.
+     * Si el PIN es incorrecto, incrementa intentos fallidos y puede bloquear la cuenta.
      */
     private void validarPinParaOperacion(String numeroCuenta, String pin)
     {
@@ -45,18 +47,35 @@ public class ATM
         if (cuentaPorValidar == null)
             throw new CuentaNoEncontradaExcepcion(numeroCuenta);
 
-        if (!cuentaPorValidar.getPin().equals(pin)) {
-            throw new PinInvalidoExcepcion("PIN inválido.");
+        // Verificar si la cuenta está bloqueada
+        if (cuentaPorValidar.estaBloqueada()) {
+            throw new CuentaBloqueadaExcepcion("La cuenta " + numeroCuenta + " está bloqueada por múltiples intentos fallidos. Contacte a administración.");
         }
+
+        // Validar el PIN
+        if (!cuentaPorValidar.getPin().equals(pin)) {
+            cuentaPorValidar.incrementarIntentosFallidos();
+            if (cuentaPorValidar.estaBloqueada()) {
+                //le indico al usuario que llegada una vez su liminte se le notifica que ha sido bloqueada
+                throw new CuentaBloqueadaExcepcion("PIN inválido. Se alcanzó el máximo de intentos (" + Cuenta.MAX_INTENTOS_FALLIDOS + "). La cuenta ha sido bloqueada.");
+            } else {
+                throw new PinInvalidoExcepcion("PIN inválido. Intentos restantes: " + (Cuenta.MAX_INTENTOS_FALLIDOS - cuentaPorValidar.getIntentosFallidos()));
+            }
+        }
+
+        // PIN correcto: reiniciar intentos fallidos
+        cuentaPorValidar.reiniciarIntentosFallidos();
     }
 
     /**
-     * Verifica el PIN pero sin contar intentos ni bloquear la cuenta.
-     * Devuelve true si el PIN es correcto, false si es incorrecto o la cuenta no existe.
+     * Verifica el PIN verificando si la cuenta está bloqueada.
+     * Devuelve true si el PIN es correcto y la cuenta no está bloqueada.
+     * Devuelve false si es incorrecto, la cuenta está bloqueada, o la cuenta no existe.
      */
     public boolean verificarPinSinBloqueo(String numeroCuenta, String pin) {
         Cuenta cuentaPorValidar = this.cuentas.get(numeroCuenta);
         if (cuentaPorValidar == null) return false;
+        if (cuentaPorValidar.estaBloqueada()) return false; // No permitir acceso si está bloqueada
         return cuentaPorValidar.getPin().equals(pin);
     }
 
@@ -194,6 +213,41 @@ public class ATM
     public void eliminarTransaccion(Transaccion transaccion)
     {
         this.listaTransacciones.remove(transaccion);// elimina la transaccion del registro
+    }
+
+    /**
+     * Desbloquea una cuenta (función administrativa).
+     * Reinicia los intentos fallidos y marca la cuenta como desbloqueada.
+     * @param numeroCuenta el número de la cuenta a desbloquear
+     * @return true si se desbloqueó exitosamente, false si la cuenta no existe
+     */
+    public boolean desbloquearCuenta(String numeroCuenta) {
+        Cuenta cuenta = this.cuentas.get(numeroCuenta);
+        if (cuenta == null) return false;
+        cuenta.desbloquearCuenta();
+        return true;
+    }
+
+    /**
+     * Obtiene el estado de bloqueo de una cuenta.
+     * @param numeroCuenta el número de la cuenta
+     * @return true = bloqueada, false = no bloqueado
+     */
+    public boolean estaCuentaBloqueada(String numeroCuenta) {
+        Cuenta cuenta = this.cuentas.get(numeroCuenta);
+        if (cuenta == null) return false;
+        return cuenta.estaBloqueada();
+    }
+
+    /**
+     * Obtiene el número de intentos fallidos de alguna cuenta
+     * @param numeroCuenta 
+     * @return número de intentos fallidos
+     */
+    public int obtenerIntentosFallidos(String numeroCuenta) {
+        Cuenta cuenta = this.cuentas.get(numeroCuenta);
+        if (cuenta == null) return -1;
+        return cuenta.getIntentosFallidos();
     }
     
     public Transaccion buscarTransaccionPorId(String idTransaccion)

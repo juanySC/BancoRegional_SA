@@ -10,6 +10,9 @@ import java.util.List;
 
 public class Cuenta 
 {
+    // Constantes
+    public static final int MAX_INTENTOS_FALLIDOS = 3;
+    
     // Atributos
     private String numeroCuenta;
     private double saldo;
@@ -17,7 +20,10 @@ public class Cuenta
     private TipoCuenta tipoCuenta;
     private Cliente titular;
     private List<Transaccion> historial; 
-    private LocalDate fechaCreacion;  
+    private LocalDate fechaCreacion;
+    
+    private int intentosFallidos;
+    private boolean bloqueada;  
 
     // Constructor
     public Cuenta(String numeroCuenta, String pin, TipoCuenta tipoCuenta, Cliente titular) 
@@ -31,6 +37,8 @@ public class Cuenta
         this.titular = titular;
         this.historial = new ArrayList<>();
         this.fechaCreacion = LocalDate.now();
+        this.intentosFallidos = 0;
+        this.bloqueada = false;
     }
 
     // Métodos
@@ -187,5 +195,65 @@ public class Cuenta
     public void cargarSaldoInicial(double nuevoSaldo) {
         if (nuevoSaldo < 0) throw new Excepciones.MontoInvalidoExcepcion("Saldo inicial inválido.");
         this.saldo = nuevoSaldo;
+    }
+
+
+    /**
+     * Verifica si la cuenta está bloqueada por los intentos
+     * @return true si la cuenta está bloqueada, false lo contrario
+     */
+    public boolean estaBloqueada() {
+        return bloqueada;
+    }
+
+    /**
+     * Obtiene el número de los intentos hechos fallidos
+     * @return número intentos 
+     */
+    public int getIntentosFallidos() {
+        return intentosFallidos;
+    }
+
+    /**
+     * Incrementa el contador para esto se utiliza el final para 
+     * Si este llega a 3 entonces la cuenta se bloquea 
+     */
+    public void incrementarIntentosFallidos() {
+        this.intentosFallidos++;
+        if (this.intentosFallidos >= MAX_INTENTOS_FALLIDOS) {
+            this.bloqueada = true;
+        }
+    }
+
+    /**
+     * Reinicia los intentos fallidos a 0 para comenzar de nuevo estto 
+     * para cuando el usuario de nuevo entre al sistema
+     */
+    public void reiniciarIntentosFallidos() {
+        this.intentosFallidos = 0;
+    }
+
+    /**
+     * Desbloquea la cuenta (opcional, para administración).
+     */
+    public void desbloquearCuenta() {
+        this.bloqueada = false;
+        this.intentosFallidos = 0;
+    }
+
+    /**
+     * Obtiene el resultado o muestra el estado del bloque
+     * @return true = bloqueado, false = no esta bloqueado 
+     */
+    public boolean isBloqueada() {
+        return bloqueada; //regresa un valor si esta bloqueado o no 
+    }
+
+    /**
+     * Establece el estado de bloqueo 
+     * @param bloqueada true = bloquear , false = no esta bloqueado
+     */
+    public void setBloqueada(boolean bloqueada) {
+        this.bloqueada = bloqueada; //regresa un valor y se lo asiga al atributo 
     }
 }

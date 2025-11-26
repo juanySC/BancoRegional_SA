@@ -38,20 +38,15 @@ public class Principal
                         try {
                            String numero = Utilitaria.ValidacionEntrada.solicitarCuentaValida(atm, "Ingrese número de cuenta (o 'salir' para cancelar):");
                            if (numero == null) break innerLoop;
-                           // Pedir PIN sin límite de intentos; si ingresa 'salir' se cancela
-                           while (true) {
-                              String pin = capturarSinEspacios("Ingrese PIN para la cuenta " + numero + " (o 'salir' para cancelar):");
-                              if (pin == null) { System.out.println("Operación cancelada."); break; }
-                              // verificar sin incrementar contadores ni bloquear
-                              if (atm.verificarPinSinBloqueo(numero, pin)) {
-                                 double saldo = atm.consultarSaldo(numero);
-                                 System.out.println("Saldo: " + String.format("%.2f", saldo));
-                                 break;
-                              } else {
-                                 System.out.println("PIN incorrecto. Regresando al menú de operaciones.");
-                                 break; // regresar al menu de operaciones sin bloqueo
-                              }
-                           }
+                           String pin = capturarSinEspacios("Ingrese PIN para la cuenta " + numero + " (o 'salir' para cancelar):");
+                           if (pin == null) { System.out.println("Operación cancelada."); break; }
+                           // Usar consultarSaldoConPin para incrementar intentos si falla
+                           double saldo = atm.consultarSaldoConPin(numero, pin);
+                           System.out.println("Saldo: " + String.format("%.2f", saldo));
+                        } catch (Excepciones.CuentaBloqueadaExcepcion e) {
+                           System.out.println(" Cuenta bloqueada: " + e.getMessage());
+                        } catch (Excepciones.PinInvalidoExcepcion e) {
+                           System.out.println("Error " + e.getMessage());
                         } catch (RuntimeException e) {
                            System.out.println("Error: " + e.getMessage());
                         }
@@ -67,9 +62,11 @@ public class Principal
                         if (pin == null) { System.out.println("Operación cancelada."); break; }
                         String idTx = "DEP_" + System.currentTimeMillis();
                         atm.depositarConPin(numero, pin, monto, idTx);
-                        //el metodo depositarConPin lanza excepciones si hay error, por eso se usa try-catch
-                        //si no hay error, se imprime el mensaje de exito
-                        System.out.println("Depósito realizado. ID: " + idTx);//aqui se imprime el mensaje de exito, idTX es el id de la transaccion
+                        System.out.println("Depósito realizado. ID: " + idTx);
+                     } catch (Excepciones.CuentaBloqueadaExcepcion e) {
+                        System.out.println(" La cuenta ha sido bloqueada: " + e.getMessage());
+                     } catch (Excepciones.PinInvalidoExcepcion e) {
+                        System.out.println(" " + e.getMessage());
                      } catch (NumberFormatException e) {
                         System.out.println("Error: formato de número inválido.");
                      } catch (RuntimeException e) {
@@ -87,9 +84,11 @@ public class Principal
                         if (pin == null) { System.out.println("Operación cancelada."); break; }
                         String idTx = "RET_" + System.currentTimeMillis();
                         atm.retirarConPin(numero, pin, monto, idTx);
-                        //el metodo retirarConPin lanza excepciones si hay error, por eso se usa try-catch
-                        //si no hay error, se imprime el mensaje de exito
-                        System.out.println("Retiro realizado. ID: " + idTx);//aqui se imprime el mensaje de exito, idTX es el id de la transaccion
+                        System.out.println("Retiro realizado. ID: " + idTx);
+                     } catch (Excepciones.CuentaBloqueadaExcepcion e) {
+                        System.out.println("Cuenta bloqueada: " + e.getMessage());
+                     } catch (Excepciones.PinInvalidoExcepcion e) {
+                        System.out.println("Error " + e.getMessage());
                      } catch (NumberFormatException e) {
                         System.out.println("Error: formato de número inválido.");
                      } catch (RuntimeException e) {
@@ -110,9 +109,11 @@ public class Principal
                         String idOrig = "TR_ORIG_" + System.currentTimeMillis();
                         String idDest = "TR_DST_" + System.currentTimeMillis();
                         atm.transferirConPin(origen, pin, destino, monto, idOrig, idDest);
-                        //el metodo transferirConPin lanza excepciones si hay error, por eso se usa try-catch
-                        //si no hay error, se imprime el mensaje de exito
                         System.out.println("Transferencia realizada. IDs: " + idOrig + ", " + idDest);
+                     } catch (Excepciones.CuentaBloqueadaExcepcion e) {
+                        System.out.println("Cuenta ha sido bloqueada: " + e.getMessage());
+                     } catch (Excepciones.PinInvalidoExcepcion e) {
+                        System.out.println("Error: " + e.getMessage());
                      } catch (NumberFormatException e) {
                         System.out.println("Error: formato de número inválido.");
                      } catch (RuntimeException e) {
